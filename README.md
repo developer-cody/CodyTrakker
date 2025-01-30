@@ -10,7 +10,7 @@ CodyTrakker is a **self-tracking mod** for **Gorilla Tag** that logs and sends t
 - Lightweight and easy to use.  
 
 ## 🔧 Installation  
-1. Download the latest release from the [Releases](https://github.com/your-repo/releases) page.  
+1. Download the latest release from the [Releases](https://github.com/developer-coody/codytrakker/releases) page.  
 2. Place the mod file into your **BepInEx/plugins** folder.  
 3. Configure your **Discord webhook URL** in the mod settings.  
 4. Launch Gorilla Tag and enjoy automatic code tracking!  

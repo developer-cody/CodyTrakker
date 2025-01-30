@@ -19,12 +19,12 @@ namespace CodyTrakker.CodyTrakker
     public class Plugin : BaseUnityPlugin
     {
         public static bool InModdedRoom => NetworkSystem.Instance.InRoom && NetworkSystem.Instance.GameModeString.Contains("MODDED");
-        public static bool InRoom;
-        private bool hasSentJoinMessage;
-        private bool hasSentLeaveMessage;
-        private bool hasBeenInRoom;
-        private static string currentRoomCode;
-        private List<DiscordHelper> discordHelpers;
+        // public static bool InRoom;
+        public static bool hasSentJoinMessage;
+        public static bool hasSentLeaveMessage;
+        public static bool hasBeenInRoom;
+        public static string currentRoomCode;
+        public static List<DiscordHelper> discordHelpers;
 
         void Start()
         {
@@ -34,12 +34,16 @@ namespace CodyTrakker.CodyTrakker
                 .Select(url => new DiscordHelper(url, $"{ConfigManager.Name.Value} Tracker", null))
                 .ToList();
 
-            _ = SendGameStartedMessage();
+            Task.Run(async () => await SendGameStartedMessage()).GetAwaiter().GetResult();
 
-            // Lmao, I didn't know there was a Unity event for when your game closes
+            /*
+             _ = SendGameStartedMessage(); - There is prob a better way to do this.... :3
 
-            // Application.quitting += OnApplicationQuitting;
-            // Debug.Log("Quitting event subscribed.");
+            Lmao, I didn't know there was a Unity event for when your game closes
+
+            Application.quitting += OnApplicationQuitting;
+            Debug.Log("Quitting event subscribed.");
+            */
         }
 
         void Update()
@@ -57,13 +61,15 @@ namespace CodyTrakker.CodyTrakker
                 if (PhotonNetwork.InRoom && !hasSentJoinMessage)
                 {
                     currentRoomCode = PhotonNetwork.CurrentRoom?.Name ?? "UNKNOWN";
-                    InRoom = true;
+                    // InRoom = true;
                     hasBeenInRoom = true;
                     hasSentJoinMessage = true;
                     hasSentLeaveMessage = false;
 
-                    string message = $"{ConfigManager.Name.Value.ToUpper()} HAS JOINED THE CODE `{currentRoomCode}`!";
-                    _ = SendRoomJoinedMessage(message);
+                    string message = $"{ConfigManager.Name.Value} has joined the room `{currentRoomCode}`!";
+                    Task.Run(async () => await SendRoomJoinedMessage(message)).GetAwaiter().GetResult();
+                    
+                    // _ = SendRoomJoinedMessage(message);
                 }
 
                 if (!PhotonNetwork.InRoom && hasBeenInRoom && !hasSentLeaveMessage)
@@ -71,8 +77,10 @@ namespace CodyTrakker.CodyTrakker
                     hasSentLeaveMessage = true;
                     hasSentJoinMessage = false;
 
-                    string message = $"{ConfigManager.Name.Value.ToUpper()} HAS LEFT THE CODE `{currentRoomCode}`";
-                    _ = SendRoomLeftMessage(message);
+                    string message = $"{ConfigManager.Name.Value} has left the room `{currentRoomCode}`";
+                    Task.Run(async () => await SendRoomLeftMessage(message)).GetAwaiter().GetResult();
+                    
+                    //_ = SendRoomLeftMessage(message);
                 }
             }
             catch (Exception ex)
@@ -258,9 +266,27 @@ namespace CodyTrakker.CodyTrakker
             await BroadcastAsync(async helper =>
             {
                 helper.NewMessage();
-                helper.AddEmbed("GAME STARTED", $"{ConfigManager.Name.Value} has started the game.", "#00FF00");
+                helper.AddEmbed("Game Started", $"{ConfigManager.Name.Value} has started {ConfigManager.Pronoun.Value.ToLower()} game.", "#00FF00");
                 await helper.SendAsync();
             });
+        }
+
+        private Task SendGameClosedMessage()
+        {
+            List<Task> tasks = new List<Task>();
+
+            foreach (var helper in discordHelpers)
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    helper.NewMessage();
+                    helper.AddEmbed($"Game Closed",
+                                    $"{ConfigManager.Name.Value} has exited {ConfigManager.Pronoun.Value.ToLower()} game.", "#FF0000");
+                    await helper.SendAsync();
+                }));
+            }
+
+            return Task.WhenAll(tasks);
         }
 
         private async Task SendRoomJoinedMessage(string description)
@@ -268,7 +294,7 @@ namespace CodyTrakker.CodyTrakker
             await BroadcastAsync(async helper =>
             {
                 helper.NewMessage();
-                helper.AddEmbed("Room joined", description, "#00FF00");
+                helper.AddEmbed("Room Joined", description, "#00FF00");
                 helper.AddField("Room:", NetworkSystem.Instance.RoomName);
                 helper.AddField("Username:", NetworkSystem.Instance.LocalPlayer?.NickName);
                 helper.AddField("Players in room:", NetworkSystem.Instance.RoomPlayerCount.ToString());
@@ -284,27 +310,9 @@ namespace CodyTrakker.CodyTrakker
             await BroadcastAsync(async helper =>
             {
                 helper.NewMessage();
-                helper.AddEmbed($"{ConfigManager.Name.Value.ToUpper()} LEFT A ROOM", description, "#FFFF00");
+                helper.AddEmbed("Room Left", description, "#FFFF00");
                 await helper.SendAsync();
             });
-        }
-
-        private Task SendGameClosedMessage()
-        {
-            List<Task> tasks = new List<Task>();
-
-            foreach (var helper in discordHelpers)
-            {
-                tasks.Add(Task.Run(async () =>
-                {
-                    helper.NewMessage();
-                    helper.AddEmbed($"{ConfigManager.Name.Value.ToUpper()} HAS CLOSED HIS GAME",
-                                    $"{ConfigManager.Name.Value} has exited the game.", "#FF0000");
-                    await helper.SendAsync();
-                }));
-            }
-
-            return Task.WhenAll(tasks);
         }
     }
 }
